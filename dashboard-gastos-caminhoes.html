@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gastos por Caminhão</title>
+<meta name="description" content="Dashboard de receitas, gastos e resultado por caminhão (centro de custo).">
+<style>
+:root{
+  color-scheme: light;
+  --page:#f4f4f1; --surface:#fcfcfb; --surface-2:#f0efec;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#7a7873;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --wash:rgba(42,120,214,.08); --wash-strong:rgba(42,120,214,.14);
+  --c1:#2a78d6; --c2:#eb6834; --c3:#1baf7a; --c4:#eda100; --c5:#e87ba4; --c6:#008300; --c7:#4a3aa7; --c8:#aeaca5;
+  --pos:#2a78d6; --neg:#e34948; --seq:#2a78d6;
+  --up-bad:#b3261e; --down-good:#006300;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232321;
+    --ink:#ffffff; --ink-2:#c3c2b7; --muted:#9a9890;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --wash:rgba(57,135,229,.12); --wash-strong:rgba(57,135,229,.22);
+    --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c6:#008300; --c7:#9085e9; --c8:#6b6a65;
+    --pos:#3987e5; --neg:#e66767; --seq:#3987e5;
+    --up-bad:#ff8a80; --down-good:#0ca30c;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232321;
+  --ink:#ffffff; --ink-2:#c3c2b7; --muted:#9a9890;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --wash:rgba(57,135,229,.12); --wash-strong:rgba(57,135,229,.22);
+  --c1:#3987e5; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c6:#008300; --c7:#9085e9; --c8:#6b6a65;
+  --pos:#3987e5; --neg:#e66767; --seq:#3987e5;
+  --up-bad:#ff8a80; --down-good:#0ca30c;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}
+.wrap{max-width:1320px;margin:0 auto;padding:20px 16px 48px}
+header.top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:22px;line-height:1.2;margin:0 0 4px;font-weight:650;letter-spacing:-.01em}
+.sub{color:var(--ink-2);margin:0;font-size:13px}
+h2{font-size:15px;margin:0;font-weight:600}
+.card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.card-h p{margin:2px 0 0;color:var(--muted);font-size:12.5px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:var(--shadow);min-width:0}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:9px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:5px 10px;border-radius:7px;cursor:pointer;color:var(--ink-2);font-size:12.5px;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--border)}
+.filters{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:16px;box-shadow:var(--shadow)}
+.filters label.f{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+select{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 28px 6px 10px;appearance:none;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 14px) 50%,calc(100% - 9px) 50%;background-size:5px 5px;background-repeat:no-repeat;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.chip{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:4px 11px;cursor:pointer;font-size:12.5px;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed="true"]{background:var(--wash-strong);border-color:transparent}
+.chip[aria-pressed="false"]{color:var(--muted);text-decoration:line-through}
+.chip.ghost{color:var(--ink-2);text-decoration:none}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
+.kpi .l{color:var(--ink-2);font-size:12.5px}
+.kpi .v{font-size:24px;font-weight:620;margin-top:4px;letter-spacing:-.01em;white-space:nowrap}
+.kpi .d{font-size:12px;color:var(--muted);margin-top:2px}
+.kpi.hero .v{font-size:26px}
+.neg-t{color:var(--up-bad)} .pos-t{color:var(--down-good)}
+.grid-main{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:16px;margin-bottom:16px;align-items:start}
+.grid-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-bottom:16px}
+@media (max-width:980px){.grid-main,.grid-2{grid-template-columns:minmax(0,1fr)}}
+.insights{margin-bottom:16px}
+.insights ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 20px}
+.insights li{padding-left:14px;position:relative;color:var(--ink-2);font-size:13.5px}
+.insights li::before{content:"";position:absolute;left:0;top:.6em;width:6px;height:6px;border-radius:50%;background:var(--axis)}
+.insights b{color:var(--ink);font-weight:600}
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:4px 6px;margin:-4px 0 12px}
+.lg{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2);border:0;background:transparent;padding:3px 7px;border-radius:7px;cursor:pointer}
+.lg:hover{background:var(--surface-2)}
+.lg[aria-pressed="true"]{background:var(--wash-strong);color:var(--ink)}
+.lg.dim{opacity:.45}
+.sw{width:10px;height:10px;border-radius:3px;flex:none}
+.tick-key{width:2px;height:12px;background:var(--ink);border-radius:1px}
+/* stacked bars */
+.bars{position:relative}
+.axis-row{display:grid;grid-template-columns:var(--lw) minmax(0,1fr) var(--vw);gap:10px;height:18px}
+.axis-ticks{position:relative;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.axis-ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.axis-ticks span:first-child{transform:none}
+.brow{display:grid;grid-template-columns:var(--lw) minmax(0,1fr) var(--vw);gap:10px;align-items:center;padding:7px 0;border-radius:8px;cursor:pointer;outline:none}
+.brow:hover,.brow:focus-visible{background:var(--surface-2)}
+.brow.sel{background:var(--wash)}
+.bl{padding-left:6px;min-width:0}
+.bl b{display:block;font-weight:600;font-variant-numeric:tabular-nums;font-size:13px}
+.bl small{color:var(--muted);font-size:11px}
+.track{position:relative;height:22px;}
+.gridlines{position:absolute;inset:0;pointer-events:none}
+.gridlines i{position:absolute;top:-7px;bottom:-7px;width:1px;background:var(--grid)}
+.gridlines i:first-child{background:var(--axis)}
+.stack{position:absolute;left:0;top:0;bottom:0;display:flex}
+.stack .s{height:100%;border-right:2px solid transparent;background-clip:padding-box;min-width:0;transition:width .25s ease}
+.stack .s:last-child{border-right:0;border-radius:0 4px 4px 0}
+.rev{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px;pointer-events:none}
+.bv{text-align:right;font-variant-numeric:tabular-nums;font-size:13px;padding-right:6px;white-space:nowrap}
+.bv small{display:block;color:var(--muted);font-size:11px}
+/* result chart */
+.rrow{display:grid;grid-template-columns:var(--lw) minmax(0,1fr) 96px;gap:10px;align-items:center;padding:6px 0;border-radius:8px;cursor:pointer}
+.rrow:hover{background:var(--surface-2)} .rrow.sel{background:var(--wash)}
+.rtrack{position:relative;height:18px}
+.rtrack .zero{position:absolute;top:-6px;bottom:-6px;width:1px;background:var(--axis)}
+.rbar{position:absolute;top:0;bottom:0}
+.rbar.p{background:var(--pos);border-radius:0 4px 4px 0}
+.rbar.n{background:var(--neg);border-radius:4px 0 0 4px}
+.rv{text-align:right;font-variant-numeric:tabular-nums;font-size:13px;padding-right:6px;white-space:nowrap}
+.rv small{display:block;color:var(--muted);font-size:11px}
+/* composition */
+.crow{display:grid;grid-template-columns:minmax(120px,170px) minmax(0,1fr) 108px;gap:10px;align-items:center;padding:6px 6px;border-radius:8px;cursor:pointer;border:0;background:transparent;width:100%;text-align:left}
+.crow:hover{background:var(--surface-2)} .crow[aria-pressed="true"]{background:var(--wash)}
+.cname{display:flex;align-items:center;gap:8px;font-size:13px;min-width:0}
+.cname span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctrack{height:14px;position:relative}
+.cbar{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0}
+.cv{text-align:right;font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap}
+.cv small{color:var(--muted);font-size:11px;margin-left:4px}
+/* detail */
+.detail{position:sticky;top:12px}
+@media (max-width:980px){.detail{position:static}}
+.dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:12px}
+.dhead .pl{font-size:20px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.nav{display:flex;gap:4px}
+.nav button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;color:var(--ink-2)}
+.nav button:hover{background:var(--surface-2)}
+.mini{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.mini div{background:var(--surface-2);border-radius:10px;padding:9px 11px}
+.mini .l{font-size:11.5px;color:var(--ink-2)}
+.mini .v{font-size:16px;font-weight:620;white-space:nowrap}
+.sec-t{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px;display:flex;justify-content:space-between;gap:8px}
+.cmp{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:6px 0;border-bottom:1px solid var(--grid)}
+.cmp:last-child{border-bottom:0}
+.cmp .n{display:flex;align-items:center;gap:7px;font-size:13px;min-width:0}
+.cmp .val{text-align:right;font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap}
+.cmp .t{grid-column:1/-1;position:relative;height:8px;margin-top:3px}
+.cmp .t .b{position:absolute;left:0;top:0;bottom:0;border-radius:0 3px 3px 0}
+.cmp .t .avg{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px}
+.cmp .dl{grid-column:1/-1;font-size:11.5px;color:var(--muted)}
+.acc{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:8px;align-items:center;padding:5px 0;font-size:12.5px;border-bottom:1px solid var(--grid)}
+.acc:last-child{border-bottom:0}
+.acc .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2)}
+.acc .vv{font-variant-numeric:tabular-nums;white-space:nowrap}
+.acc .vv small{color:var(--muted);margin-left:6px}
+.more{margin-top:8px;width:100%}
+.dot{width:8px;height:8px;border-radius:50%}
+/* heatmap + table */
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+table{border-collapse:separate;border-spacing:2px;width:100%;font-variant-numeric:tabular-nums;font-size:12.5px}
+th{font-weight:600;color:var(--ink-2);text-align:right;padding:6px 8px;white-space:nowrap;font-size:12px;cursor:pointer;user-select:none;vertical-align:bottom}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1}
+th .sw{display:inline-block;vertical-align:-1px;margin-right:5px}
+th[aria-sort="descending"]::after{content:" ↓";color:var(--muted)}
+th[aria-sort="ascending"]::after{content:" ↑";color:var(--muted)}
+td{padding:7px 8px;text-align:right;white-space:nowrap;border-radius:5px}
+td.h{cursor:default}
+tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--pos)}
+td.sum,th.sum{font-weight:600}
+tbody tr.clk{cursor:pointer}
+tbody tr.clk:hover td:first-child{background:var(--surface-2)}
+.tbl td{border-bottom:1px solid var(--grid);border-radius:0}
+.tbl{border-spacing:0}
+.tbl tfoot td{font-weight:600;border-bottom:0;border-top:1px solid var(--axis)}
+.tbl td.z{color:var(--muted)}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=search]{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;min-width:200px;color:var(--ink)}
+.btn{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12.5px}
+.btn:hover{background:var(--surface-2)}
+.tip{position:fixed;z-index:50;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:10px;padding:9px 11px;font-size:12.5px;box-shadow:0 6px 24px rgba(0,0,0,.14);min-width:180px;max-width:280px;opacity:0;transition:opacity .1s}
+.tip.on{opacity:1}
+.tip .tt{font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.tip .r{display:flex;justify-content:space-between;gap:14px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.tip .r b{color:var(--ink);font-weight:600}
+.empty{color:var(--muted);padding:24px 0;text-align:center}
+footer{color:var(--muted);font-size:12px;margin-top:20px;line-height:1.6}
+@media (max-width:640px){
+  .wrap{padding:14px 12px 40px}
+  h1{font-size:19px}
+  .card{padding:14px;border-radius:12px}
+  .kpis{grid-template-columns:1fr 1fr;gap:8px}
+  .kpi{padding:11px 12px}.kpi .v{font-size:19px}.kpi.hero{grid-column:1/-1}.kpi.hero .v{font-size:26px}
+  .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;flex-basis:100%}
+  .filters{gap:10px}
+  .crow{grid-template-columns:minmax(96px,120px) minmax(0,1fr) 92px}
+  input[type=search]{min-width:0;flex:1}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Gastos por caminhão</h1>
+      <p class="sub" id="sub">—</p>
+    </div>
+    <div class="seg" role="group" aria-label="Tema">
+      <button data-theme-btn="auto">Auto</button><button data-theme-btn="light">Claro</button><button data-theme-btn="dark">Escuro</button>
+    </div>
+  </header>
+
+  <div class="filters">
+    <label class="f">Período <select id="fPeriodo"></select></label>
+    <div class="chips" id="fTrucks" role="group" aria-label="Caminhões"></div>
+  </div>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="card insights">
+    <div class="card-h"><div><h2>Destaques</h2><p>Gerados automaticamente a partir dos filtros atuais</p></div></div>
+    <ul id="insights"></ul>
+  </section>
+
+  <div class="grid-main">
+    <section class="card">
+      <div class="card-h">
+        <div><h2 id="barsTitle">Gastos por caminhão e categoria</h2><p id="barsSub">Clique em um caminhão para ver o detalhe · clique numa categoria para isolá-la</p></div>
+        <div class="seg" role="group" aria-label="Ordenar">
+          <button data-sort="gastos">Maior gasto</button><button data-sort="resultado">Pior resultado</button><button data-sort="placa">Placa</button>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="bars" id="bars"></div>
+    </section>
+    <aside class="card detail" id="detail"></aside>
+  </div>
+
+  <div class="grid-2">
+    <section class="card">
+      <div class="card-h"><div><h2>Resultado por caminhão</h2><p>Receita − gastos no período · margem sobre a receita</p></div></div>
+      <div id="result"></div>
+    </section>
+    <section class="card">
+      <div class="card-h"><div><h2>Para onde vai o dinheiro</h2><p>Gastos da frota por categoria · clique para isolar no gráfico principal</p></div></div>
+      <div id="comp"></div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-bottom:16px">
+    <div class="card-h">
+      <div><h2>Mapa de calor: caminhão × categoria</h2><p id="heatSub">Cor mais forte = maior valor dentro de cada categoria (compara caminhões entre si)</p></div>
+      <div class="seg" role="group" aria-label="Unidade">
+        <button data-heat="valor">R$</button><button data-heat="gastos">% dos gastos</button><button data-heat="receita">% da receita</button>
+      </div>
+    </div>
+    <div class="scroll"><table id="heat"></table></div>
+  </section>
+
+  <section class="card">
+    <div class="card-h">
+      <div><h2>Todas as contas</h2><p>Valores por conta do plano de contas e caminhão</p></div>
+      <div class="tools"><input type="search" id="q" placeholder="Buscar conta ou código…" aria-label="Buscar conta"><button class="btn" id="csv">Exportar CSV</button></div>
+    </div>
+    <div class="scroll"><table class="tbl" id="tbl"></table></div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+/* =====================================================================
+   DADOS
+   Cada período = um relatório "Fluxo de caixa por Centro de custo" do Sienge.
+   Para adicionar um mês, copie um bloco { id, label, caminhoes:[...] } e
+   preencha as contas analíticas (tipo R) de cada centro de custo.
+   As categorias são atribuídas automaticamente pelo código da conta (CATS).
+   ===================================================================== */
+const PERIODOS = [
+  {"id":"2026-09","label":"Setembro/2026","caminhoes":[
+      {"cc":13,"placa":"OGL4H68","tipo":"ASFALTO","contas":[
+        {"codigo": "1.01.03.01", "conta": "Receita Prestação de Serviço", "valor": 56502.8},
+        {"codigo": "2.00", "conta": "Despesas viagens", "valor": 705.54},
+        {"codigo": "2.01.01.01", "conta": "Materiais Civis", "valor": 214.58},
+        {"codigo": "2.01.01.08", "conta": "Ferramentas Adquiridas (Consumo)", "valor": 131.86},
+        {"codigo": "2.01.01.09", "conta": "Fardamentos e EPI/EPC", "valor": 833.62},
+        {"codigo": "2.01.03.01", "conta": "Salários e Ordenados", "valor": 753.92},
+        {"codigo": "2.01.04.08", "conta": "Medicina Ocupacional", "valor": 892.5},
+        {"codigo": "2.01.04.13", "conta": "Ajuda de custo colaboradores", "valor": 2695.0},
+        {"codigo": "2.01.04.17", "conta": "Reembolso", "valor": 118.68},
+        {"codigo": "2.01.05.05", "conta": "Peças e Componentes - Equip/Veiculos/Máquina", "valor": 3137.0},
+        {"codigo": "2.01.05.06", "conta": "Serviços de Manutenção - Equip,Veiculos e Maquinas", "valor": 3456.67},
+        {"codigo": "2.01.05.07", "conta": "Licenciamento Veiculos/Equipamentos", "valor": 189.22},
+        {"codigo": "2.01.05.08", "conta": "Seguros Veiculos/Equipamentos", "valor": 1325.03},
+        {"codigo": "2.01.05.10", "conta": "Combustível/Abastecimento", "valor": 22341.38},
+        {"codigo": "2.01.05.13", "conta": "Pneus e Serviço de Borracharia", "valor": 2314.34},
+        {"codigo": "2.01.07.02", "conta": "Hospedagem - Viagens", "valor": 480.0},
+        {"codigo": "2.01.10.05", "conta": "Aquisição de Móveis e Utensílios", "valor": 85.0},
+        {"codigo": "2.03.02.99", "conta": "(-) Descontos Obtidos", "valor": -39.05},
+        {"codigo": "2.04.01.01", "conta": "PIS", "valor": 544.02},
+        {"codigo": "2.04.02.03", "conta": "FGTS", "valor": 696.78},
+        {"codigo": "2.04.06.02", "conta": "Infrações/Multas de Trânsito", "valor": 478.45},
+        {"codigo": "2.98.01.01", "conta": "(-)Retenção PIS/COFINS/CSLL - (Uso Interno Sienge)", "valor": -45.54},
+        {"codigo": "2.98.01.04", "conta": "(-) Retenção IRRF - (Uso Interno Sienge)", "valor": -13.39}
+      ]},
+      {"cc":14,"placa":"OGL5B78","tipo":"ASFALTO","contas":[
+        {"codigo": "1.01.03.01", "conta": "Receita Prestação de Serviço", "valor": 72745.4},
+        {"codigo": "2.00", "conta": "Despesas viagens", "valor": 828.15},
+        {"codigo": "2.01.01.01", "conta": "Materiais Civis", "valor": 214.58},
+        {"codigo": "2.01.01.08", "conta": "Ferramentas Adquiridas (Consumo)", "valor": 131.86},
+        {"codigo": "2.01.01.09", "conta": "Fardamentos e EPI/EPC", "valor": 1206.42},
+        {"codigo": "2.01.03.01", "conta": "Salários e Ordenados", "valor": 6224.22},
+        {"codigo": "2.01.04.01", "conta": "Vale Transporte", "valor": 50.0},
+        {"codigo": "2.01.04.13", "conta": "Ajuda de custo colaboradores", "valor": 4565.0},
+        {"codigo": "2.01.05.05", "conta": "Peças e Componentes - Equip/Veiculos/Máquina", "valor": 6014.65},
+        {"codigo": "2.01.05.06", "conta": "Serviços de Manutenção - Equip,Veiculos e Maquinas", "valor": 9050.0},
+        {"codigo": "2.01.05.07", "conta": "Licenciamento Veiculos/Equipamentos", "valor": 94.61},
+        {"codigo": "2.01.05.08", "conta": "Seguros Veiculos/Equipamentos", "valor": 1324.98},
+        {"codigo": "2.01.05.10", "conta": "Combustível/Abastecimento", "valor": 23304.67},
+        {"codigo": "2.01.05.13", "conta": "Pneus e Serviço de Borracharia", "valor": 2161.84},
+        {"codigo": "2.01.05.14", "conta": "Serviços de Lavagem", "valor": 342.0},
+        {"codigo": "2.01.05.15", "conta": "Serviços de guincho", "valor": 1200.0},
+        {"codigo": "2.01.09.05", "conta": "Gás", "valor": 300.0},
+        {"codigo": "2.04.01.01", "conta": "PIS", "valor": 544.02},
+        {"codigo": "2.04.02.03", "conta": "FGTS", "valor": 696.78},
+        {"codigo": "2.04.06.02", "conta": "Infrações/Multas de Trânsito", "valor": 2169.15},
+        {"codigo": "2.98.01.01", "conta": "(-)Retenção PIS/COFINS/CSLL - (Uso Interno Sienge)", "valor": -4.04}
+      ]},
+      {"cc":15,"placa":"OGK8B78","tipo":"ASFALTO","contas":[
+        {"codigo": "2.01.01.01", "conta": "Materiais Civis", "valor": 214.58},
+        {"codigo": "2.01.01.08", "conta": "Ferramentas Adquiridas (Consumo)", "valor": 75.66},
+        {"codigo": "2.01.01.09", "conta": "Fardamentos e EPI/EPC", "valor": 547.8},
+        {"codigo": "2.01.05.05", "conta": "Peças e Componentes - Equip/Veiculos/Máquina", "valor": 360.23},
+        {"codigo": "2.01.05.06", "conta": "Serviços de Manutenção - Equip,Veiculos e Maquinas", "valor": 335.0},
+        {"codigo": "2.01.05.07", "conta": "Licenciamento Veiculos/Equipamentos", "valor": 94.61},
+        {"codigo": "2.01.05.08", "conta": "Seguros Veiculos/Equipamentos", "valor": 1324.98},
+        {"codigo": "2.01.05.10", "conta": "Combustível/Abastecimento", "valor": 5883.77},
+        {"codigo": "2.01.05.13", "conta": "Pneus e Serviço de Borracharia", "valor": 1590.17},
+        {"codigo": "2.03.02.99", "conta": "(-) Descontos Obtidos", "valor": -26.03},
+        {"codigo": "2.04.01.01", "conta": "PIS", "valor": 544.02},
+        {"codigo": "2.04.02.03", "conta": "FGTS", "valor": 696.78},
+        {"codigo": "2.04.06.02", "conta": "Infrações/Multas de Trânsito", "valor": 130.16},
+        {"codigo": "2.98.01.01", "conta": "(-)Retenção PIS/COFINS/CSLL - (Uso Interno Sienge)", "valor": -4.04}
+      ]},
+      {"cc":16,"placa":"OGK8C88","tipo":"ASFALTO","contas":[
+        {"codigo": "1.01.03.01", "conta": "Receita Prestação de Serviço", "valor": 58773.52},
+        {"codigo": "2.01.01.01", "conta": "Materiais Civis", "valor": 214.58},
+        {"codigo": "2.01.01.08", "conta": "Ferramentas Adquiridas (Consumo)", "valor": 132.11},
+        {"codigo": "2.01.01.09", "conta": "Fardamentos e EPI/EPC", "valor": 1411.8},
+        {"codigo": "2.01.03.01", "conta": "Salários e Ordenados", "valor": 1423.02},
+        {"codigo": "2.01.03.10", "conta": "Custo de Rescisões", "valor": 12731.5},
+        {"codigo": "2.01.04.08", "conta": "Medicina Ocupacional", "valor": 301.5},
+        {"codigo": "2.01.04.13", "conta": "Ajuda de custo colaboradores", "valor": 1760.0},
+        {"codigo": "2.01.04.17", "conta": "Reembolso", "valor": 62.99},
+        {"codigo": "2.01.05.04", "conta": "Locação de Veiculos", "valor": 15000.0},
+        {"codigo": "2.01.05.05", "conta": "Peças e Componentes - Equip/Veiculos/Máquina", "valor": 7018.8},
+        {"codigo": "2.01.05.06", "conta": "Serviços de Manutenção - Equip,Veiculos e Maquinas", "valor": 4294.44},
+        {"codigo": "2.01.05.07", "conta": "Licenciamento Veiculos/Equipamentos", "valor": 94.61},
+        {"codigo": "2.01.05.08", "conta": "Seguros Veiculos/Equipamentos", "valor": 1324.98},
+        {"codigo": "2.01.05.10", "conta": "Combustível/Abastecimento", "valor": 23114.32},
+        {"codigo": "2.01.05.13", "conta": "Pneus e Serviço de Borracharia", "valor": 1680.17},
+        {"codigo": "2.01.07.04", "conta": "Diária - Viagens", "valor": 1813.5},
+        {"codigo": "2.03.04.07", "conta": "Documentos", "valor": 1000.0},
+        {"codigo": "2.04.01.01", "conta": "PIS", "valor": 544.02},
+        {"codigo": "2.04.02.03", "conta": "FGTS", "valor": 2559.12},
+        {"codigo": "2.04.06.02", "conta": "Infrações/Multas de Trânsito", "valor": 395.8},
+        {"codigo": "2.98.01.01", "conta": "(-)Retenção PIS/COFINS/CSLL - (Uso Interno Sienge)", "valor": -4.04}
+      ]},
+      {"cc":17,"placa":"OGK8D88","tipo":"ASFALTO","contas":[
+        {"codigo": "1.01.03.01", "conta": "Receita Prestação de Serviço", "valor": 97673.19},
+        {"codigo": "2.01.01.01", "conta": "Materiais Civis", "valor": 214.58},
+        {"codigo": "2.01.01.08", "conta": "Ferramentas Adquiridas (Consumo)", "valor": 407.83},
+        {"codigo": "2.01.03.01", "conta": "Salários e Ordenados", "valor": 7204.16},
+        {"codigo": "2.01.04.13", "conta": "Ajuda de custo colaboradores", "valor": 3190.0},
+        {"codigo": "2.01.05.05", "conta": "Peças e Componentes - Equip/Veiculos/Máquina", "valor": 5757.96},
+        {"codigo": "2.01.05.06", "conta": "Serviços de Manutenção - Equip,Veiculos e Maquinas", "valor": 5914.95},
+        {"codigo": "2.01.05.07", "conta": "Licenciamento Veiculos/Equipamentos", "valor": 320.68},
+        {"codigo": "2.01.05.08", "conta": "Seguros Veiculos/Equipamentos", "valor": 1324.98},
+        {"codigo": "2.01.05.10", "conta": "Combustível/Abastecimento", "valor": 6569.69},
+        {"codigo": "2.01.05.13", "conta": "Pneus e Serviço de Borracharia", "valor": 1770.17},
+        {"codigo": "2.01.07.02", "conta": "Hospedagem - Viagens", "valor": 175.0},
+        {"codigo": "2.03.02.99", "conta": "(-) Descontos Obtidos", "valor": -52.06},
+        {"codigo": "2.04.02.03", "conta": "FGTS", "valor": 696.78},
+        {"codigo": "2.04.06.02", "conta": "Infrações/Multas de Trânsito", "valor": 2170.3},
+        {"codigo": "2.98.01.01", "conta": "(-)Retenção PIS/COFINS/CSLL - (Uso Interno Sienge)", "valor": -4.04}
+      ]},
+      {"cc":25,"placa":"QJE5I99","tipo":"ASFALTO","contas":[
+        {"codigo": "1.01.03.01", "conta": "Receita Prestação de Serviço", "valor": 119995.41},
+        {"codigo": "2.01.01.01", "conta": "Materiais Civis", "valor": 214.58},
+        {"codigo": "2.01.01.08", "conta": "Ferramentas Adquiridas (Consumo)", "valor": 326.62},
+        {"codigo": "2.01.01.09", "conta": "Fardamentos e EPI/EPC", "valor": 833.62},
+        {"codigo": "2.01.02.01", "conta": "Serviços Terceirizados e Empreiteiros", "valor": 2387.0},
+        {"codigo": "2.01.03.01", "conta": "Salários e Ordenados", "valor": 8230.19},
+        {"codigo": "2.01.04.13", "conta": "Ajuda de custo colaboradores", "valor": 3025.0},
+        {"codigo": "2.01.05.05", "conta": "Peças e Componentes - Equip/Veiculos/Máquina", "valor": 7179.71},
+        {"codigo": "2.01.05.06", "conta": "Serviços de Manutenção - Equip,Veiculos e Maquinas", "valor": 5723.33},
+        {"codigo": "2.01.05.07", "conta": "Licenciamento Veiculos/Equipamentos", "valor": 227.49},
+        {"codigo": "2.01.05.08", "conta": "Seguros Veiculos/Equipamentos", "valor": 1325.13},
+        {"codigo": "2.01.05.10", "conta": "Combustível/Abastecimento", "valor": 25903.41},
+        {"codigo": "2.01.05.13", "conta": "Pneus e Serviço de Borracharia", "valor": 4698.28},
+        {"codigo": "2.03.02.99", "conta": "(-) Descontos Obtidos", "valor": -26.03},
+        {"codigo": "2.04.01.01", "conta": "PIS", "valor": 1088.1},
+        {"codigo": "2.04.02.03", "conta": "FGTS", "valor": 696.86},
+        {"codigo": "2.04.06.02", "conta": "Infrações/Multas de Trânsito", "valor": 130.16},
+        {"codigo": "2.98.01.01", "conta": "(-)Retenção PIS/COFINS/CSLL - (Uso Interno Sienge)", "valor": -4.05}
+      ]},
+      {"cc":31,"placa":"ALC0C88","tipo":"ASFALTO","contas":[
+        {"codigo": "2.01.05.05", "conta": "Peças e Componentes - Equip/Veiculos/Máquina", "valor": 1790.0},
+        {"codigo": "2.01.05.08", "conta": "Seguros Veiculos/Equipamentos", "valor": 351.46}
+      ]}
+  ]}
+];
+
+/* Categorias de gasto — mapeadas pelo prefixo do código da conta (o mais longo vence). */
+const CATS = [
+  {k:'comb', n:'Combustível',            c:'--c1', p:['2.01.05.10']},
+  {k:'manu', n:'Manutenção e peças',     c:'--c2', p:['2.01.05.05','2.01.05.06','2.01.05.14','2.01.05.15']},
+  {k:'pneu', n:'Pneus e borracharia',    c:'--c3', p:['2.01.05.13']},
+  {k:'mao',  n:'Mão de obra e encargos', c:'--c4', p:['2.01.03','2.01.04','2.04.02']},
+  {k:'seg',  n:'Seguro, licença e docs', c:'--c5', p:['2.01.05.07','2.01.05.08','2.03.04.07']},
+  {k:'loc',  n:'Locação de veículos',    c:'--c6', p:['2.01.05.04']},
+  {k:'mult', n:'Multas de trânsito',     c:'--c7', p:['2.04.06']},
+  {k:'out',  n:'Outros',                 c:'--c8', p:[]}
+];
+const CATMAP = Object.fromEntries(CATS.map(c=>[c.k,c]));
+function catOf(code){
+  let best=null, bl=-1;
+  for(const c of CATS) for(const p of c.p) if((code===p||code.startsWith(p+'.'))&&p.length>bl){best=c.k;bl=p.length;}
+  return best||'out';
+}
+
+/* ---------- formatação ---------- */
+const nf2 = new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const brl = v => 'R$ ' + nf2.format(v);
+function brlK(v){
+  const a=Math.abs(v), s=v<0?'−':'';
+  if(a>=1e6) return s+'R$ '+(a/1e6).toLocaleString('pt-BR',{maximumFractionDigits:2})+' mi';
+  if(a>=1e3) return s+'R$ '+(a/1e3).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mil';
+  return s+'R$ '+a.toLocaleString('pt-BR',{maximumFractionDigits:0});
+}
+const pct = (v,d=1) => isFinite(v) ? (v*100).toLocaleString('pt-BR',{maximumFractionDigits:d,minimumFractionDigits:0})+'%' : '—';
+const esc = s => String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const cv = name => `var(${name})`;
+function niceStep(max,n=4){ if(max<=0) return 1; const raw=max/n, m=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/m; return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*m; }
+
+/* ---------- estado ---------- */
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const ALL_CC=[...new Set(PERIODOS.flatMap(p=>p.caminhoes.map(c=>c.cc)))].sort((a,b)=>a-b);
+const S={periodo: PERIODOS.length>1?'all':PERIODOS[0].id, hidden:new Set(), sort:'gastos', foco:null, sel:null, heat:'valor', heatSort:{k:'gastos',dir:-1}, q:'', allAcc:false};
+
+/* ---------- agregação ---------- */
+function build(){
+  const per = S.periodo==='all'?PERIODOS:PERIODOS.filter(p=>p.id===S.periodo);
+  const map=new Map();
+  for(const p of per) for(const c of p.caminhoes){
+    let t=map.get(c.cc);
+    if(!t){t={cc:c.cc,placa:c.placa,tipo:c.tipo,receita:0,gastos:0,cats:Object.fromEntries(CATS.map(x=>[x.k,0])),contas:new Map()};map.set(c.cc,t);}
+    for(const a of c.contas){
+      const prev=t.contas.get(a.codigo)||{codigo:a.codigo,conta:a.conta,valor:0,cat:a.codigo.startsWith('1')?null:catOf(a.codigo)};
+      prev.valor+=a.valor; t.contas.set(a.codigo,prev);
+      if(a.codigo.startsWith('1')) t.receita+=a.valor;
+      else if(a.codigo.startsWith('2')){t.gastos+=a.valor; t.cats[prev.cat]+=a.valor;}
+    }
+  }
+  const all=[...map.values()].map(t=>({...t,contas:[...t.contas.values()],resultado:t.receita-t.gastos}));
+  return {all, vis:all.filter(t=>!S.hidden.has(t.cc)), nPer:per.length, per};
+}
+
+/* ---------- tooltip ---------- */
+const tip=document.getElementById('tip');
+function showTip(e,html){tip.innerHTML=html;tip.classList.add('on');moveTip(e);}
+function moveTip(e){const pad=14,w=tip.offsetWidth,h=tip.offsetHeight;let x=e.clientX+pad,y=e.clientY+pad;if(x+w>innerWidth-8)x=e.clientX-w-pad;if(y+h>innerHeight-8)y=e.clientY-h-pad;tip.style.left=Math.max(8,x)+'px';tip.style.top=Math.max(8,y)+'px';}
+function hideTip(){tip.classList.remove('on');}
+function bindTips(root){
+  root.querySelectorAll('[data-tip]').forEach(el=>{
+    el.addEventListener('pointerenter',e=>showTip(e,el.dataset.tip));
+    el.addEventListener('pointermove',moveTip);
+    el.addEventListener('pointerleave',hideTip);
+  });
+}
+addEventListener('scroll',hideTip,{passive:true});
+
+/* ---------- render ---------- */
+function render(){
+  const D=build(); const V=D.vis;
+  if(S.sel==null||!V.find(t=>t.cc===S.sel)) S.sel=V.length?[...V].sort((a,b)=>b.gastos-a.gastos)[0].cc:null;
+  const perLabel = S.periodo==='all' ? (D.per.length>1?`${D.per[0].label} a ${D.per[D.per.length-1].label}`:D.per[0].label) : PERIODOS.find(p=>p.id===S.periodo).label;
+  document.getElementById('sub').textContent=`${perLabel} · ${V.length} de ${D.all.length} caminhões · análise “Comprometido” (Sienge)`;
+  renderKpis(V); renderInsights(V); renderLegend(V); renderBars(V); renderDetail(V); renderResult(V); renderComp(V); renderHeat(V); renderTable(V);
+  document.querySelectorAll('[data-sort]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.sort===S.sort));
+  document.querySelectorAll('[data-heat]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.heat===S.heat));
+}
+
+function renderKpis(V){
+  const rec=V.reduce((s,t)=>s+t.receita,0), g=V.reduce((s,t)=>s+t.gastos,0), r=rec-g;
+  const comb=V.reduce((s,t)=>s+t.cats.comb,0);
+  const neg=V.filter(t=>t.resultado<0);
+  const veic=V.reduce((s,t)=>s+t.cats.comb+t.cats.manu+t.cats.pneu+t.cats.seg+t.cats.loc,0);
+  const k=[
+    {l:'Gastos totais',v:brl(g),d:`${V.length? brlK(g/V.length):'—'} por caminhão (média)`,hero:true},
+    {l:'Receita',v:brl(rec),d:`${V.filter(t=>t.receita>0).length} caminhões faturaram`},
+    {l:'Resultado',v:brl(r),d:rec?`Margem ${pct(r/rec)}`:'Sem receita no filtro',cls:r<0?'neg-t':''},
+    {l:'Combustível',v:brl(comb),d:`${pct(g?comb/g:NaN)} dos gastos`},
+    {l:'Custo direto do veículo',v:brl(veic),d:`${pct(g?veic/g:NaN)} · combustível, manutenção, pneus, seguro, locação`},
+    {l:'Caminhões no vermelho',v:String(neg.length),d:neg.length?neg.map(t=>t.placa).join(', '):'Todos positivos',cls:neg.length?'neg-t':''}
+  ];
+  document.getElementById('kpis').innerHTML=k.map(x=>`<div class="kpi${x.hero?' hero':''}"><div class="l">${x.l}</div><div class="v ${x.cls||''}">${x.v}</div><div class="d">${esc(x.d)}</div></div>`).join('');
+}
+
+function renderInsights(V){
+  const el=document.getElementById('insights');
+  if(!V.length){el.innerHTML='<li>Nenhum caminhão selecionado.</li>';return;}
+  const g=V.reduce((s,t)=>s+t.gastos,0); const out=[];
+  const catTot=CATS.map(c=>({c,v:V.reduce((s,t)=>s+t.cats[c.k],0)})).sort((a,b)=>b.v-a.v);
+  out.push(`<b>${catTot[0].c.n}</b> é o maior gasto da frota: <b>${brlK(catTot[0].v)}</b> (${pct(catTot[0].v/g)} do total), seguido de ${catTot[1].c.n.toLowerCase()} (${pct(catTot[1].v/g)}).`);
+  const top=[...V].sort((a,b)=>b.gastos-a.gastos)[0];
+  const avg=c=>V.reduce((s,t)=>s+t.cats[c],0)/V.length;
+  const drivers=CATS.map(c=>({c,ex:top.cats[c.k]-avg(c.k),v:top.cats[c.k]})).filter(x=>x.ex>0).sort((a,b)=>b.ex-a.ex).slice(0,2);
+  out.push(`<b>${top.placa}</b> foi o caminhão que mais gastou (<b>${brlK(top.gastos)}</b>)${drivers.length?', puxado por '+drivers.map(d=>`${d.c.n.toLowerCase()} (${brlK(d.v)}, ${brlK(d.ex)} acima da média)`).join(' e '):''}.`);
+  const neg=V.filter(t=>t.resultado<0&&t.receita>0);
+  if(neg.length) out.push(`Gastaram mais do que faturaram: ${neg.map(t=>`<b>${t.placa}</b> (${brlK(t.resultado)}; gastos = ${pct(t.gastos/t.receita,0)} da receita)`).join(', ')}.`);
+  const sem=V.filter(t=>t.receita<=0);
+  if(sem.length) out.push(`Sem receita no período: ${sem.map(t=>`<b>${t.placa}</b> (${brlK(t.gastos)} em gastos)`).join(', ')} — vale conferir se estão parados ou se o faturamento caiu em outro centro de custo.`);
+  const best=[...V].filter(t=>t.receita>0).sort((a,b)=>b.resultado/b.receita-a.resultado/a.receita)[0];
+  if(best) out.push(`Melhor margem: <b>${best.placa}</b>, ${pct(best.resultado/best.receita)} (${brlK(best.resultado)} de resultado).`);
+  const fuel=V.filter(t=>t.receita>0).map(t=>({t,r:t.cats.comb/t.receita})).sort((a,b)=>b.r-a.r);
+  if(fuel.length>1) out.push(`Combustível sobre a receita varia de ${pct(fuel[fuel.length-1].r)} (${fuel[fuel.length-1].t.placa}) a <b>${pct(fuel[0].r)}</b> (<b>${fuel[0].t.placa}</b>).`);
+  el.innerHTML=out.map(x=>`<li>${x}</li>`).join('');
+}
+
+function renderLegend(V){
+  const el=document.getElementById('legend');
+  el.innerHTML=CATS.map(c=>`<button class="lg${S.foco&&S.foco!==c.k?' dim':''}" data-cat="${c.k}" aria-pressed="${S.foco===c.k}"><span class="sw" style="background:${cv(c.c)}"></span>${c.n}</button>`).join('')+
+    (S.foco?'':`<span class="lg" style="cursor:default"><span class="tick-key"></span>Receita</span>`);
+  el.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{S.foco=S.foco===b.dataset.cat?null:b.dataset.cat;render();});
+}
+
+function sorted(V){
+  const a=[...V];
+  if(S.sort==='placa') a.sort((x,y)=>x.placa.localeCompare(y.placa));
+  else if(S.sort==='resultado') a.sort((x,y)=>x.resultado-y.resultado);
+  else a.sort((x,y)=>(S.foco?y.cats[S.foco]-x.cats[S.foco]:y.gastos-x.gastos));
+  return a;
+}
+
+function setLayoutVars(el){ const m=innerWidth<640; el.style.setProperty('--lw',m?'78px':'104px'); el.style.setProperty('--vw',m?'78px':'108px'); }
+
+function renderBars(V){
+  const el=document.getElementById('bars'); setLayoutVars(el);
+  document.getElementById('barsTitle').textContent=S.foco?`${CATMAP[S.foco].n} por caminhão`:'Gastos por caminhão e categoria';
+  if(!V.length){el.innerHTML='<div class="empty">Selecione ao menos um caminhão.</div>';return;}
+  const val=t=>S.foco?t.cats[S.foco]:t.gastos;
+  const max=Math.max(...V.map(t=>S.foco?val(t):Math.max(t.gastos,t.receita)),1);
+  const step=niceStep(max); const top=Math.ceil(max/step)*step; const ticks=[];
+  for(let x=0;x<=top+1e-6;x+=step) ticks.push(x);
+  const X=v=>Math.max(0,v)/top*100;
+  const grid=`<div class="gridlines">${ticks.map(t=>`<i style="left:${X(t)}%"></i>`).join('')}</div>`;
+  let h=`<div class="axis-row"><div></div><div class="axis-ticks">${ticks.map(t=>`<span style="left:${X(t)}%">${t===0?'0':brlK(t).replace('R$ ','')}</span>`).join('')}</div><div></div></div>`;
+  for(const t of sorted(V)){
+    const cats=S.foco?[CATMAP[S.foco]]:CATS;
+    const segs=cats.filter(c=>t.cats[c.k]>0).map(c=>{
+      const v=t.cats[c.k];
+      const tt=`<div class='tt'><span class='sw' style='background:${cv(c.c)}'></span>${esc(c.n)}</div><div class='r'>${t.placa}<b>${brl(v)}</b></div><div class='r'>% dos gastos do caminhão<b>${pct(v/t.gastos)}</b></div><div class='r'>% da receita<b>${t.receita>0?pct(v/t.receita):'—'}</b></div>`;
+      return `<div class="s" style="width:${X(v)}%;background:${cv(c.c)}" data-tip="${esc(tt)}"></div>`;
+    }).join('');
+    const sub=S.foco?(t.gastos?pct(val(t)/t.gastos)+' dos gastos':''):(t.receita>0?pct(t.gastos/t.receita,0)+' da receita':'sem receita');
+    const rev=!S.foco&&t.receita>0?`<span class="rev" style="left:${X(t.receita)}%"></span>`:'';
+    h+=`<div class="brow${t.cc===S.sel?' sel':''}" data-cc="${t.cc}" tabindex="0" role="button" aria-label="${t.placa}: gastos ${brl(val(t))}">
+      <div class="bl"><b>${t.placa}</b><small>CC ${t.cc}</small></div>
+      <div class="track">${grid}<div class="stack" style="width:100%">${segs}</div>${rev}</div>
+      <div class="bv">${brlK(val(t))}<small>${sub}</small></div></div>`;
+  }
+  el.innerHTML=h; bindTips(el);
+  el.querySelectorAll('.brow').forEach(r=>{
+    const go=()=>{S.sel=+r.dataset.cc;render(); if(innerWidth<=980) document.getElementById('detail').scrollIntoView({behavior:'smooth',block:'start'});};
+    r.onclick=go; r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};
+  });
+}
+
+function renderDetail(V){
+  const el=document.getElementById('detail');
+  const t=V.find(x=>x.cc===S.sel);
+  if(!t){el.innerHTML='<div class="empty">Selecione um caminhão.</div>';return;}
+  const avg=k=>V.reduce((s,x)=>s+x.cats[k],0)/V.length;
+  const order=sorted(V); const i=order.findIndex(x=>x.cc===t.cc);
+  const cmpMax=Math.max(...CATS.map(c=>Math.max(t.cats[c.k],avg(c.k))),1);
+  const cmp=CATS.filter(c=>t.cats[c.k]!==0||avg(c.k)!==0).map(c=>{
+    const v=t.cats[c.k], a=avg(c.k), d=a?v/a-1:NaN;
+    const dtxt=!a?'':Math.abs(d)<0.05?'na média da frota':`${d>0?'▲':'▼'} ${pct(Math.abs(d),0)} ${d>0?'acima':'abaixo'} da média (${brlK(a)})`;
+    return `<div class="cmp"><div class="n"><span class="sw" style="background:${cv(c.c)}"></span>${c.n}</div><div class="val">${brl(v)}</div>
+      <div class="t"><div class="b" style="width:${Math.max(0,v)/cmpMax*100}%;background:${cv(c.c)}"></div><div class="avg" style="left:${a/cmpMax*100}%" title="Média da frota"></div></div>
+      <div class="dl"${d>0.05?' style="color:var(--ink-2)"':''}>${dtxt}</div></div>`;
+  }).join('');
+  const accs=t.contas.filter(a=>a.cat).sort((a,b)=>b.valor-a.valor);
+  const LIM=8, shown=S.allAcc?accs:accs.slice(0,LIM);
+  const acc=shown.map(a=>`<div class="acc" title="${esc(a.codigo+' · '+a.conta)}"><span class="dot" style="background:${cv(CATMAP[a.cat].c)}"></span><span class="nm">${esc(a.conta)}</span><span class="vv">${brl(a.valor)}<small>${t.gastos?pct(a.valor/t.gastos):''}</small></span></div>`).join('');
+  el.innerHTML=`<div class="dhead"><div><div class="sec-t" style="margin:0 0 2px">Detalhe do caminhão</div><div class="pl">${t.placa}</div><div class="sub">CC ${t.cc} · ${esc(t.tipo)}</div></div>
+    <div class="nav"><button aria-label="Anterior" data-nav="-1">‹</button><button aria-label="Próximo" data-nav="1">›</button></div></div>
+    <div class="mini">
+      <div><div class="l">Receita</div><div class="v">${brlK(t.receita)}</div></div>
+      <div><div class="l">Gastos</div><div class="v">${brlK(t.gastos)}</div></div>
+      <div><div class="l">Resultado</div><div class="v ${t.resultado<0?'neg-t':''}">${brlK(t.resultado)}</div></div>
+      <div><div class="l">Margem</div><div class="v ${t.resultado<0?'neg-t':''}">${t.receita>0?pct(t.resultado/t.receita):'—'}</div></div>
+    </div>
+    <div class="sec-t"><span>Categoria vs média da frota</span><span style="display:inline-flex;align-items:center;gap:5px;text-transform:none;letter-spacing:0"><span class="tick-key"></span>média</span></div>
+    ${cmp}
+    <div class="sec-t"><span>Contas (${accs.length})</span><span>% dos gastos</span></div>
+    ${acc}
+    ${accs.length>LIM?`<button class="btn more" id="moreAcc">${S.allAcc?'Mostrar menos':`Ver todas as ${accs.length} contas`}</button>`:''}`;
+  const mb=el.querySelector('#moreAcc'); if(mb) mb.onclick=()=>{S.allAcc=!S.allAcc;renderDetail(build().vis);};
+  el.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{const n=order[(i+ +b.dataset.nav+order.length)%order.length];S.sel=n.cc;render();});
+}
+
+function renderResult(V){
+  const el=document.getElementById('result'); setLayoutVars(el);
+  if(!V.length){el.innerHTML='<div class="empty">—</div>';return;}
+  const a=[...V].sort((x,y)=>y.resultado-x.resultado);
+  const mx=Math.max(0,...a.map(t=>t.resultado)), mn=Math.min(0,...a.map(t=>t.resultado)); const span=(mx-mn)||1;
+  const z=(-mn)/span*100;
+  el.innerHTML=a.map(t=>{
+    const w=Math.abs(t.resultado)/span*100, p=t.resultado>=0;
+    const tt=`<div class='tt'>${t.placa}</div><div class='r'>Receita<b>${brl(t.receita)}</b></div><div class='r'>Gastos<b>${brl(t.gastos)}</b></div><div class='r'>Resultado<b>${brl(t.resultado)}</b></div>`;
+    return `<div class="rrow${t.cc===S.sel?' sel':''}" data-cc="${t.cc}" data-tip="${esc(tt)}"><div class="bl"><b>${t.placa}</b><small>CC ${t.cc}</small></div>
+      <div class="rtrack"><div class="rbar ${p?'p':'n'}" style="${p?`left:${z}%`:`left:${z-w}%`};width:${w}%"></div><div class="zero" style="left:${z}%"></div></div>
+      <div class="rv ${p?'':'neg-t'}">${brlK(t.resultado)}<small>${t.receita>0?'margem '+pct(t.resultado/t.receita,0):'sem receita'}</small></div></div>`;
+  }).join('');
+  bindTips(el);
+  el.querySelectorAll('.rrow').forEach(r=>r.onclick=()=>{S.sel=+r.dataset.cc;render();});
+}
+
+function renderComp(V){
+  const el=document.getElementById('comp');
+  const g=V.reduce((s,t)=>s+t.gastos,0);
+  const rows=CATS.map(c=>({c,v:V.reduce((s,t)=>s+t.cats[c.k],0)})).filter(x=>x.v!==0).sort((a,b)=>b.v-a.v);
+  const mx=Math.max(...rows.map(r=>r.v),1);
+  el.innerHTML=rows.map(r=>{
+    const tt=`<div class='tt'><span class='sw' style='background:${cv(r.c.c)}'></span>${esc(r.c.n)}</div><div class='r'>Total<b>${brl(r.v)}</b></div><div class='r'>% dos gastos<b>${pct(r.v/g)}</b></div><div class='r'>Média por caminhão<b>${brl(r.v/V.length)}</b></div>`;
+    return `<button class="crow" data-cat="${r.c.k}" aria-pressed="${S.foco===r.c.k}" data-tip="${esc(tt)}"><span class="cname"><span class="sw" style="background:${cv(r.c.c)}"></span><span>${r.c.n}</span></span>
+    <span class="ctrack"><span class="cbar" style="width:${r.v/mx*100}%;background:${cv(r.c.c)}"></span></span>
+    <span class="cv">${brlK(r.v)}<small>${pct(r.v/g)}</small></span></button>`;}).join('');
+  bindTips(el);
+  el.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{S.foco=S.foco===b.dataset.cat?null:b.dataset.cat;render();document.getElementById('bars').scrollIntoView({behavior:'smooth',block:'center'});});
+}
+
+function renderHeat(V){
+  const el=document.getElementById('heat');
+  const cats=CATS.filter(c=>V.some(t=>t.cats[c.k]!==0));
+  const mode=S.heat;
+  const valOf=(t,k)=>{const v=k==='gastos'?t.gastos:k==='receita'?t.receita:k==='resultado'?t.resultado:t.cats[k]; return v;};
+  const disp=(t,k)=>{const v=t.cats[k]; return mode==='valor'?v:mode==='gastos'?(t.gastos?v/t.gastos:NaN):(t.receita>0?v/t.receita:NaN);};
+  const fmt=v=>!isFinite(v)?'—':mode==='valor'?nf2.format(v):pct(v);
+  const colMax=Object.fromEntries(cats.map(c=>[c.k,Math.max(...V.map(t=>disp(t,c.k)).filter(isFinite),0)]));
+  const hs=S.heatSort;
+  const rows=[...V].sort((a,b)=>{
+    if(hs.k==='placa') return hs.dir*a.placa.localeCompare(b.placa);
+    const ka=CATMAP[hs.k]?disp(a,hs.k):valOf(a,hs.k), kb=CATMAP[hs.k]?disp(b,hs.k):valOf(b,hs.k);
+    return hs.dir*((isFinite(ka)?ka:-1e15)-(isFinite(kb)?kb:-1e15));
+  });
+  const ariaS=k=>hs.k===k?` aria-sort="${hs.dir<0?'descending':'ascending'}"`:'';
+  let h=`<thead><tr><th data-k="placa"${ariaS('placa')}>Caminhão</th>${cats.map(c=>`<th data-k="${c.k}"${ariaS(c.k)}><span class="sw" style="background:${cv(c.c)}"></span>${c.n}</th>`).join('')}
+    <th class="sum" data-k="gastos"${ariaS('gastos')}>Gastos</th><th data-k="receita"${ariaS('receita')}>Receita</th><th data-k="resultado"${ariaS('resultado')}>Resultado</th></tr></thead><tbody>`;
+  for(const t of rows){
+    h+=`<tr class="clk${t.cc===S.sel?' sel':''}" data-cc="${t.cc}"><td><b>${t.placa}</b></td>`;
+    for(const c of cats){
+      const v=disp(t,c.k), r=colMax[c.k]&&isFinite(v)?Math.max(0,v)/colMax[c.k]:0, m=Math.round(4+r*82);
+      const fg=m>52?'#fff':'var(--ink)';
+      if(mode==='valor'&&!v){h+=`<td class="h" style="color:var(--muted)">–</td>`;continue;}
+      h+=`<td class="h" style="background:color-mix(in oklab, var(--seq) ${m}%, var(--surface));color:${fg}">${fmt(v)}</td>`;
+    }
+    h+=`<td class="sum">${nf2.format(t.gastos)}</td><td>${t.receita?nf2.format(t.receita):'—'}</td><td class="${t.resultado<0?'neg-t':''}">${nf2.format(t.resultado)}</td></tr>`;
+  }
+  const tg=V.reduce((s,t)=>s+t.gastos,0), tr=V.reduce((s,t)=>s+t.receita,0);
+  h+=`</tbody><tfoot><tr><td><b>Frota</b></td>${cats.map(c=>{const v=V.reduce((s,t)=>s+t.cats[c.k],0);return `<td class="sum">${mode==='valor'?nf2.format(v):mode==='gastos'?pct(v/tg):pct(tr?v/tr:NaN)}</td>`}).join('')}<td class="sum">${nf2.format(tg)}</td><td class="sum">${nf2.format(tr)}</td><td class="sum ${tr-tg<0?'neg-t':''}">${nf2.format(tr-tg)}</td></tr></tfoot>`;
+  el.innerHTML=h;
+  el.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{const k=th.dataset.k; S.heatSort= hs.k===k?{k,dir:-hs.dir}:{k,dir:k==='placa'?1:-1}; renderHeat(build().vis);});
+  el.querySelectorAll('tr.clk').forEach(r=>r.onclick=()=>{S.sel=+r.dataset.cc;render();});
+  document.getElementById('heatSub').textContent= mode==='valor'?'Valores em R$ · cor mais forte = maior valor dentro de cada categoria (compara caminhões entre si)':
+    mode==='gastos'?'Participação de cada categoria nos gastos do próprio caminhão':'Quanto cada categoria consome da receita do caminhão (— = sem receita)';
+}
+
+function tableData(V){
+  const codes=new Map();
+  for(const t of V) for(const a of t.contas) if(!codes.has(a.codigo)) codes.set(a.codigo,a.conta);
+  const list=[...codes.entries()].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true}));
+  const cols=[...V].sort((a,b)=>a.cc-b.cc);
+  return {list,cols};
+}
+function renderTable(V){
+  const el=document.getElementById('tbl'); const {list,cols}=tableData(V);
+  const q=S.q.trim().toLowerCase();
+  const get=(t,c)=>{const a=t.contas.find(x=>x.codigo===c);return a?a.valor:0;};
+  const rows=list.filter(([c,n])=>!q||c.includes(q)||n.toLowerCase().includes(q)||(c.startsWith('2')&&CATMAP[catOf(c)].n.toLowerCase().includes(q)));
+  let h=`<thead><tr><th style="cursor:default">Conta</th><th style="cursor:default;text-align:left">Categoria</th>${cols.map(t=>`<th style="cursor:default">${t.placa}</th>`).join('')}<th class="sum" style="cursor:default">Total</th></tr></thead><tbody>`;
+  for(const [c,n] of rows){
+    const vals=cols.map(t=>get(t,c)); const tot=vals.reduce((s,v)=>s+v,0);
+    const cat=c.startsWith('1')?'Receita':CATMAP[catOf(c)].n;
+    const sw=c.startsWith('1')?'':`<span class="sw" style="display:inline-block;vertical-align:-1px;margin-right:6px;background:${cv(CATMAP[catOf(c)].c)}"></span>`;
+    h+=`<tr><td><span style="color:var(--muted);margin-right:6px">${c}</span>${esc(n)}</td><td style="text-align:left;color:var(--ink-2)">${sw}${cat}</td>${vals.map(v=>`<td class="${v?'':'z'}">${v?nf2.format(v):'–'}</td>`).join('')}<td class="sum">${nf2.format(tot)}</td></tr>`;
+  }
+  if(!rows.length) h+=`<tr><td colspan="${cols.length+3}" class="empty">Nenhuma conta encontrada.</td></tr>`;
+  h+=`</tbody><tfoot><tr><td>Total de gastos</td><td></td>${cols.map(t=>`<td>${nf2.format(t.gastos)}</td>`).join('')}<td>${nf2.format(cols.reduce((s,t)=>s+t.gastos,0))}</td></tr></tfoot>`;
+  el.innerHTML=h;
+}
+function exportCSV(){
+  const V=build().vis; const {list,cols}=tableData(V);
+  const f=v=>v.toFixed(2).replace('.',',');
+  const lines=[['Código','Conta','Categoria',...cols.map(t=>t.placa),'Total'].join(';')];
+  for(const [c,n] of list){
+    const vals=cols.map(t=>{const a=t.contas.find(x=>x.codigo===c);return a?a.valor:0;});
+    lines.push([c,'"'+n.replace(/"/g,'""')+'"',c.startsWith('1')?'Receita':CATMAP[catOf(c)].n,...vals.map(f),f(vals.reduce((s,v)=>s+v,0))].join(';'));
+  }
+  const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`gastos-por-caminhao-${S.periodo}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+/* ---------- controles ---------- */
+function initControls(){
+  const ps=document.getElementById('fPeriodo');
+  ps.innerHTML=(PERIODOS.length>1?'<option value="all">Todos os períodos</option>':'')+PERIODOS.map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
+  ps.value=S.periodo; ps.onchange=()=>{S.periodo=ps.value;render();};
+  const placa=cc=>{for(const p of PERIODOS){const c=p.caminhoes.find(x=>x.cc===cc);if(c)return c.placa;}return cc;};
+  const tc=document.getElementById('fTrucks');
+  const drawChips=()=>{
+    tc.innerHTML=`<button class="chip ghost" id="chipAll">${S.hidden.size?'Mostrar todos':'Todos'}</button>`+ALL_CC.map(cc=>`<button class="chip" data-cc="${cc}" aria-pressed="${!S.hidden.has(cc)}">${placa(cc)}</button>`).join('');
+    tc.querySelector('#chipAll').onclick=()=>{S.hidden.clear();drawChips();render();};
+    tc.querySelectorAll('[data-cc]').forEach(b=>b.onclick=()=>{const cc=+b.dataset.cc; S.hidden.has(cc)?S.hidden.delete(cc):S.hidden.add(cc); drawChips(); render();});
+  };
+  drawChips();
+  document.querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{S.sort=b.dataset.sort;render();});
+  document.querySelectorAll('[data-heat]').forEach(b=>b.onclick=()=>{S.heat=b.dataset.heat;render();});
+  document.getElementById('q').oninput=e=>{S.q=e.target.value;renderTable(build().vis);};
+  document.getElementById('csv').onclick=exportCSV;
+  const applyTheme=m=>{ if(m==='auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme',m);
+    document.querySelectorAll('[data-theme-btn]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.themeBtn===m)); store.set('gpc-theme',m); };
+  document.querySelectorAll('[data-theme-btn]').forEach(b=>b.onclick=()=>applyTheme(b.dataset.themeBtn));
+  applyTheme(store.get('gpc-theme')||'auto');
+  document.getElementById('foot').innerHTML=`Fonte: Sienge / Starian — relatório “Fluxo de caixa por Centro de custo”, valores em R$, tipo de análise “Comprometido”. `+
+    `Gastos = soma das contas analíticas do grupo 2 (inclui descontos e retenções negativos, em “Outros”). Receita = grupo 1. Categorias agrupadas pelo código da conta.`;
+  let rt; addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(render,120);});
+}
+initControls(); render();
+</script>
+</body>
+</html>
